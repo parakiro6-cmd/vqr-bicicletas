@@ -1,0 +1,11 @@
+# Editor
+.vscode/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos SQL de mantenimiento (no van en producción)
+fix_rls.sql
+fix_grants.sql
+crear_usuario_admin.sql
