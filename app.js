@@ -13,8 +13,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // PIN de acceso para modo vigilante
 const VIGILANTE_PIN   = '1234';
-const VIGILANTE_EMAIL = 'vigilante@vqr.internal';
-const VIGILANTE_PASS  = 'Vigilante.2026!';
+const VIGILANTE_EMAIL = 'vigilante@hospitalsanvicente.gov.co';
+const VIGILANTE_PASS  = 'Vigilante.2026';
 
 const { createClient } = window.supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -228,6 +228,7 @@ window.loginAdmin = async function() {
   document.getElementById('btn-login-spin').classList.add('hidden');
   if(error){ showToast('Credenciales incorrectas','error'); return; }
   state.currentUser=data.user; state.currentRole='admin';
+  localStorage.setItem('vqr_role', 'admin');       // ← persiste el rol
   showToast('Bienvenido, Admin','success');
   renderAdminDashboard();
 };
@@ -249,6 +250,7 @@ window.loginVigilante = async function() {
     console.error('[Vigilante]',error); return;
   }
   state.currentUser=data.user; state.currentRole='vigilante';
+  localStorage.setItem('vqr_role', 'vigilante');   // ← persiste el rol
   showToast('Bienvenido, Vigilante','success');
   renderGuardView();
 };
@@ -1059,6 +1061,7 @@ window.logout = async function() {
   stopScanner();
   await sb.auth.signOut();
   state.currentUser=null; state.currentRole=null;
+  localStorage.removeItem('vqr_role');             // ← limpia el rol persistido
   renderLoginView();
 };
 
@@ -1081,10 +1084,26 @@ async function init() {
   try {
     const {data:{session}}=await sb.auth.getSession();
     if(session?.user){
-      state.currentUser=session.user;
-      state.currentRole='admin';
-      renderAdminDashboard();
+      // Leer el rol que fue persistido al hacer login.
+      // Si no hay rol guardado o es desconocido → forzar login de nuevo (seguridad).
+      const savedRole = localStorage.getItem('vqr_role');
+
+      if(savedRole === 'admin'){
+        state.currentUser=session.user;
+        state.currentRole='admin';
+        renderAdminDashboard();
+      } else if(savedRole === 'vigilante'){
+        state.currentUser=session.user;
+        state.currentRole='vigilante';
+        renderGuardView();          // ← vigilante SIEMPRE va al escáner, nunca al dashboard
+      } else {
+        // Sesión de Supabase activa pero sin rol conocido → cerrar sesión y pedir login
+        await sb.auth.signOut();
+        localStorage.removeItem('vqr_role');
+        // renderLoginView ya fue llamado arriba
+      }
     }
+    // Si no hay sesión → renderLoginView ya fue llamado arriba
   } catch(err){ console.warn('[init]',err); }
 }
 
