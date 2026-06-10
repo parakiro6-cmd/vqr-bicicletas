@@ -13,7 +13,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const VIGILANTE_PIN   = '1234';
 // Credenciales internas del usuario vigilante en Supabase
 // Crea este usuario en Supabase > Authentication > Users > Add user
-const VIGILANTE_EMAIL = 'vigilante@vqr.internal';
+const VIGILANTE_EMAIL = 'vigilante@hospitalsanvicente.gov.co';
 const VIGILANTE_PASS  = 'Vigilante.2026';
 
 const { createClient } = window.supabase;
