@@ -3,7 +3,7 @@
 // Versión: 1.0.0
 // =============================================
 
-const CACHE_NAME = 'vqr-cache-v4';
+const CACHE_NAME = 'vqr-cache-v5';
 const URLS_TO_CACHE = [
   './index.html',
   './app.js',

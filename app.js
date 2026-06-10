@@ -195,7 +195,7 @@ function renderLoginView() {
           </div>
         </div>
       </div>
-      <p class="mt-6 text-slate-600 text-xs">VQR v2.0 · Sistema de Control</p>
+      <p class="mt-6 text-slate-600 text-xs">VQR v1.0 · Sistema de Control de Uso de Bicicletas HSVA</p>
     </div>`;
   document.getElementById('login-pass')?.addEventListener('keydown',(e)=>{ if(e.key==='Enter') loginAdmin(); });
 }
