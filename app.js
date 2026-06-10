@@ -567,30 +567,89 @@ window.searchPersona = async function() {
       <div class="bg-slate-900/50 border border-slate-600 rounded-xl p-3">
         <p class="text-amber-400 text-sm font-semibold mb-3">⚠ No encontrado. Crear nueva persona:</p>
         <div class="space-y-2">
-          <input id="modal-nombre" type="text" placeholder="Nombre completo"
-                 class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
-          <input id="modal-telefono" type="tel" placeholder="Teléfono (opcional)"
-                 class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
-          <button onclick="createPersona('${esc(cedula)}')"
-                  class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-all">
-            Crear Persona
+
+          <!-- Cédula: viene prellenada con lo que se buscó, es obligatoria -->
+          <div>
+            <label class="text-xs text-slate-400 mb-1 block">
+              N° Documento de Identidad <span class="text-red-400">*</span>
+            </label>
+            <input id="modal-nueva-cedula" type="text" inputmode="numeric"
+                   value="${esc(cedula)}"
+                   placeholder="Número de cédula"
+                   class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg
+                          text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
+          </div>
+
+          <!-- Nombre completo: obligatorio -->
+          <div>
+            <label class="text-xs text-slate-400 mb-1 block">
+              Nombre completo <span class="text-red-400">*</span>
+            </label>
+            <input id="modal-nombre" type="text"
+                   placeholder="Nombre y apellidos"
+                   class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg
+                          text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
+          </div>
+
+          <!-- Teléfono: opcional -->
+          <div>
+            <label class="text-xs text-slate-400 mb-1 block">Teléfono (opcional)</label>
+            <input id="modal-telefono" type="tel"
+                   placeholder="Ej: 3001234567"
+                   class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg
+                          text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
+          </div>
+
+          <button onclick="createPersona()"
+                  class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95
+                         text-white font-semibold rounded-lg text-sm transition-all mt-1">
+            ✓ Crear Persona
           </button>
         </div>
       </div>`;
   }
 };
 
-window.createPersona = async function(cedula) {
+window.createPersona = async function() {
+  // Leer los tres campos del formulario de creación
+  const cedula   = document.getElementById('modal-nueva-cedula')?.value.trim();
   const nombre   = document.getElementById('modal-nombre')?.value.trim();
   const telefono = document.getElementById('modal-telefono')?.value.trim();
-  if (!nombre) { showToast('El nombre es obligatorio','warning'); return; }
-  const { data, error } = await sb.from('personas').insert({ cedula, nombre, telefono: telefono||null }).select().single();
-  if (error) { showToast('Error: '+error.message,'error'); return; }
+
+  // Validar campos obligatorios
+  if (!cedula) {
+    showToast('El número de documento es obligatorio','warning');
+    document.getElementById('modal-nueva-cedula')?.focus();
+    return;
+  }
+  if (!nombre) {
+    showToast('El nombre es obligatorio','warning');
+    document.getElementById('modal-nombre')?.focus();
+    return;
+  }
+
+  // Verificar que no exista ya esa cédula (puede haber cambiado el valor)
+  const { data: existe } = await sb.from('personas').select('id').eq('cedula', cedula).limit(1);
+  if (existe && existe.length > 0) {
+    showToast('Ya existe una persona con ese documento','warning');
+    return;
+  }
+
+  const { data, error } = await sb
+    .from('personas')
+    .insert({ cedula, nombre, telefono: telefono || null })
+    .select()
+    .single();
+
+  if (error) { showToast('Error al crear persona: ' + error.message, 'error'); return; }
+
+  // Mostrar confirmación y habilitar paso de bicicleta
   document.getElementById('modal-persona-id').value = data.id;
   document.getElementById('modal-persona-result').innerHTML = `
     <div class="bg-green-900/30 border border-green-700/50 rounded-xl p-3 text-sm">
-      <p class="font-semibold text-green-300">✓ Persona creada</p>
-      <p class="text-white">${esc(data.nombre)}</p>
+      <p class="font-semibold text-green-300">✓ Persona creada exitosamente</p>
+      <p class="text-white mt-1">${esc(data.nombre)}</p>
+      <p class="text-slate-400 text-xs">Cédula: ${esc(data.cedula)} · Tel: ${esc(data.telefono||'—')}</p>
     </div>`;
   document.getElementById('modal-step-bike').classList.remove('hidden');
   showToast('Persona registrada','success');
