@@ -9,7 +9,12 @@
 // ══════════════════════════════════════
 const SUPABASE_URL      = 'https://xougtkwukgukwkadezwf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvdWd0a3d1a2d1a3drYWRlendmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwOTA5MDksImV4cCI6MjA5NjY2NjkwOX0.SeVNSoMTxl5smzrbbxmS45QDTqZs9kQj017bmnU7wp0';
-const VIGILANTE_PIN     = '1234';
+// PIN de acceso para modo vigilante (sin cuenta Supabase visible)
+const VIGILANTE_PIN   = '1234';
+// Credenciales internas del usuario vigilante en Supabase
+// Crea este usuario en Supabase > Authentication > Users > Add user
+const VIGILANTE_EMAIL = 'vigilante@vqr.internal';
+const VIGILANTE_PASS  = 'Vigilante.2026';
 
 const { createClient } = window.supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -189,7 +194,7 @@ function renderLoginView() {
           </div>
         </div>
       </div>
-      <p class="mt-6 text-slate-600 text-xs">VQR v1.0 · Sistema de Control</p>
+      <p class="mt-6 text-slate-600 text-xs">VQR v1.0 · Sistema de Control de Bicicletas HSVA</p>
     </div>`;
   document.getElementById('login-pass')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginAdmin(); });
 }
@@ -232,7 +237,7 @@ window.loginAdmin = async function() {
   renderAdminDashboard();
 };
 
-window.loginVigilante = function() {
+window.loginVigilante = async function() {
   const pin = [0,1,2,3].map(i => document.getElementById(`pin-${i}`)?.value).join('');
   if (pin !== VIGILANTE_PIN) {
     showToast('PIN incorrecto','error'); playBeep(false);
@@ -240,6 +245,26 @@ window.loginVigilante = function() {
     document.getElementById('pin-0')?.focus();
     return;
   }
+
+  // Mostrar estado de carga
+  const btn = document.querySelector('#form-vigilante button');
+  if (btn) { btn.textContent = 'Verificando...'; btn.disabled = true; }
+
+  // Autenticar silenciosamente en Supabase con el usuario vigilante
+  // Esto es necesario para que las queries a las tablas funcionen (RLS requiere auth)
+  const { data, error } = await sb.auth.signInWithPassword({
+    email:    VIGILANTE_EMAIL,
+    password: VIGILANTE_PASS
+  });
+
+  if (error) {
+    if (btn) { btn.textContent = 'Entrar al Escáner'; btn.disabled = false; }
+    showToast('Error de configuración: crea el usuario vigilante en Supabase', 'error', 6000);
+    console.error('[Vigilante auth]', error.message);
+    return;
+  }
+
+  state.currentUser = data.user;
   state.currentRole = 'vigilante';
   showToast('Bienvenido, Vigilante','success');
   renderGuardView();
