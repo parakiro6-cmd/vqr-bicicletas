@@ -35,6 +35,8 @@ const state = {
   histPage: 1, histTotal: 0,
   histFilters: { from: '', to: '', search: '', order: 'desc' },
   statsPage: 1, statsTotal: 0, statsSearch: '',
+  // Código QR activo en el modal de registro de bicicleta
+  activeQRCode: null,
 };
 
 // ══════════════════════════════════════
@@ -509,101 +511,140 @@ function showResultCard(type, title, bike) {
 // ══════════════════════════════════════
 // 9. MODAL REGISTRO BICICLETA
 // ══════════════════════════════════════
+
+/**
+ * Abre el modal de registro de nueva bicicleta.
+ * Guarda el qrCode en state.activeQRCode para que todas las
+ * funciones del modal lo puedan usar sin pasarlo como string en HTML.
+ */
 window.showRegisterBikeModal = function(qrCode) {
+  state.activeQRCode = qrCode; // ← guardado de forma segura en estado
   openModal(`
     <div class="p-6">
       <div class="flex items-center justify-between mb-5">
         <h2 class="text-lg font-bold text-white">Registrar Bicicleta</h2>
-        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700">✕</button>
+        <button onclick="closeModal()"
+                class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700">✕</button>
       </div>
-      <p class="text-xs text-slate-400 mb-4">Código QR: <span class="text-blue-400 font-mono">${esc(qrCode)}</span></p>
+
+      <!-- Muestra el código QR que se está registrando -->
+      <div class="bg-slate-900/60 border border-slate-700 rounded-xl px-3 py-2 mb-4 flex items-center gap-2">
+        <span class="text-slate-500 text-xs">Código QR detectado:</span>
+        <span class="text-blue-400 font-mono text-xs break-all">${esc(qrCode)}</span>
+      </div>
+
+      <!-- PASO 1: Buscar propietario por cédula -->
       <div id="modal-step-persona">
-        <p class="text-sm font-semibold text-slate-300 mb-2">1. Buscar propietario</p>
+        <p class="text-sm font-semibold text-slate-300 mb-2">
+          <span class="bg-blue-600 text-white text-xs rounded-full w-5 h-5 inline-flex items-center justify-center mr-1">1</span>
+          Buscar propietario por cédula
+        </p>
         <div class="flex gap-2">
-          <input id="modal-cedula" type="text" placeholder="Número de cédula" inputmode="numeric"
-                 class="flex-1 px-3 py-2.5 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all"
+          <input id="modal-cedula" type="text" placeholder="Número de cédula"
+                 inputmode="numeric" autocomplete="off"
+                 class="flex-1 px-3 py-2.5 bg-slate-900 border border-slate-600 rounded-xl
+                        text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all"
                  onkeydown="if(event.key==='Enter') searchPersona()" />
-          <button onclick="searchPersona()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm transition-all">Buscar</button>
+          <button onclick="searchPersona()"
+                  class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95
+                         text-white rounded-xl text-sm font-semibold transition-all">
+            Buscar
+          </button>
         </div>
         <div id="modal-persona-result" class="mt-3"></div>
       </div>
+
+      <!-- PASO 2: Datos de la bicicleta (oculto hasta confirmar persona) -->
       <div id="modal-step-bike" class="hidden mt-4">
         <div class="h-px bg-slate-700 mb-4"></div>
-        <p class="text-sm font-semibold text-slate-300 mb-3">2. Datos de la bicicleta</p>
+        <p class="text-sm font-semibold text-slate-300 mb-3">
+          <span class="bg-blue-600 text-white text-xs rounded-full w-5 h-5 inline-flex items-center justify-center mr-1">2</span>
+          Datos de la bicicleta
+        </p>
         <div class="space-y-3">
-          <input id="modal-marca" type="text" placeholder="Marca (ej: Trek, Specialized...)"
-                 class="w-full px-3 py-2.5 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
-          <input id="modal-color" type="text" placeholder="Color principal"
-                 class="w-full px-3 py-2.5 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
+          <div>
+            <label class="text-xs text-slate-400 mb-1 block">Marca <span class="text-red-400">*</span></label>
+            <input id="modal-marca" type="text" placeholder="Ej: Trek, Specialized, Shimano..."
+                   class="w-full px-3 py-2.5 bg-slate-900 border border-slate-600 rounded-xl
+                          text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 mb-1 block">Color</label>
+            <input id="modal-color" type="text" placeholder="Ej: Rojo, Negro mate, Azul..."
+                   class="w-full px-3 py-2.5 bg-slate-900 border border-slate-600 rounded-xl
+                          text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
+          </div>
         </div>
         <input type="hidden" id="modal-persona-id" />
-        <button onclick="saveBike('${esc(qrCode)}')"
-                class="mt-4 w-full py-3 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-bold rounded-xl transition-all text-sm">
-          ✓ Guardar y Registrar Entrada
+        <button onclick="saveBike()"
+                class="mt-4 w-full py-3 bg-green-600 hover:bg-green-700 active:scale-95
+                       text-white font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-2">
+          ✓ Guardar Bicicleta y Registrar Entrada
         </button>
       </div>
     </div>`);
 };
 
 window.searchPersona = async function() {
-  const cedula = document.getElementById('modal-cedula')?.value.trim();
+  const cedula    = document.getElementById('modal-cedula')?.value.trim();
   if (!cedula) { showToast('Ingresa una cédula','warning'); return; }
+
   const resultDiv = document.getElementById('modal-persona-result');
-  resultDiv.innerHTML = '<p class="text-slate-400 text-sm">Buscando...</p>';
+  resultDiv.innerHTML = '<p class="text-slate-400 text-sm animate-pulse">Buscando...</p>';
+
   const { data, error } = await sb.from('personas').select('*').eq('cedula', cedula).limit(1);
-  if (error) { resultDiv.innerHTML = `<p class="text-red-400 text-sm">${error.message}</p>`; return; }
+  if (error) { resultDiv.innerHTML = `<p class="text-red-400 text-sm">Error: ${esc(error.message)}</p>`; return; }
+
   if (data && data.length > 0) {
+    // ── Persona ENCONTRADA ──
     const p = data[0];
     resultDiv.innerHTML = `
       <div class="bg-green-900/30 border border-green-700/50 rounded-xl p-3 text-sm">
-        <p class="font-semibold text-green-300">✓ Persona encontrada</p>
-        <p class="text-white mt-1">${esc(p.nombre)}</p>
-        <p class="text-slate-400 text-xs">Cédula: ${esc(p.cedula)} · Tel: ${esc(p.telefono||'—')}</p>
+        <p class="font-semibold text-green-300 mb-1">✓ Propietario encontrado</p>
+        <div class="grid grid-cols-2 gap-1 text-xs">
+          <div><span class="text-slate-500">Nombre</span><p class="text-white font-medium">${esc(p.nombre)}</p></div>
+          <div><span class="text-slate-500">Cédula</span><p class="text-white font-medium">${esc(p.cedula)}</p></div>
+          <div><span class="text-slate-500">Teléfono</span><p class="text-white">${esc(p.telefono||'—')}</p></div>
+        </div>
       </div>`;
     document.getElementById('modal-persona-id').value = p.id;
     document.getElementById('modal-step-bike').classList.remove('hidden');
-  } else {
-    resultDiv.innerHTML = `
-      <div class="bg-slate-900/50 border border-slate-600 rounded-xl p-3">
-        <p class="text-amber-400 text-sm font-semibold mb-3">⚠ No encontrado. Crear nueva persona:</p>
-        <div class="space-y-2">
 
-          <!-- Cédula: viene prellenada con lo que se buscó, es obligatoria -->
+  } else {
+    // ── Persona NO ENCONTRADA → formulario de creación ──
+    resultDiv.innerHTML = `
+      <div class="bg-slate-900/50 border border-amber-700/40 rounded-xl p-3">
+        <p class="text-amber-400 text-sm font-semibold mb-3">
+          ⚠ No se encontró persona con esa cédula. Créala:
+        </p>
+        <div class="space-y-2.5">
           <div>
             <label class="text-xs text-slate-400 mb-1 block">
-              N° Documento de Identidad <span class="text-red-400">*</span>
+              N° Documento <span class="text-red-400">*</span>
             </label>
             <input id="modal-nueva-cedula" type="text" inputmode="numeric"
                    value="${esc(cedula)}"
-                   placeholder="Número de cédula"
                    class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg
-                          text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
+                          text-white text-sm focus:border-blue-500 transition-all" />
           </div>
-
-          <!-- Nombre completo: obligatorio -->
           <div>
             <label class="text-xs text-slate-400 mb-1 block">
               Nombre completo <span class="text-red-400">*</span>
             </label>
-            <input id="modal-nombre" type="text"
-                   placeholder="Nombre y apellidos"
+            <input id="modal-nombre" type="text" placeholder="Nombre y apellidos"
                    class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg
                           text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
           </div>
-
-          <!-- Teléfono: opcional -->
           <div>
             <label class="text-xs text-slate-400 mb-1 block">Teléfono (opcional)</label>
-            <input id="modal-telefono" type="tel"
-                   placeholder="Ej: 3001234567"
+            <input id="modal-telefono" type="tel" placeholder="Ej: 3001234567"
                    class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg
                           text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
           </div>
-
           <button onclick="createPersona()"
                   class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95
-                         text-white font-semibold rounded-lg text-sm transition-all mt-1">
-            ✓ Crear Persona
+                         text-white font-semibold rounded-lg text-sm transition-all">
+            ✓ Crear Persona y Continuar
           </button>
         </div>
       </div>`;
@@ -611,67 +652,96 @@ window.searchPersona = async function() {
 };
 
 window.createPersona = async function() {
-  // Leer los tres campos del formulario de creación
   const cedula   = document.getElementById('modal-nueva-cedula')?.value.trim();
   const nombre   = document.getElementById('modal-nombre')?.value.trim();
   const telefono = document.getElementById('modal-telefono')?.value.trim();
 
-  // Validar campos obligatorios
-  if (!cedula) {
-    showToast('El número de documento es obligatorio','warning');
-    document.getElementById('modal-nueva-cedula')?.focus();
-    return;
-  }
-  if (!nombre) {
-    showToast('El nombre es obligatorio','warning');
-    document.getElementById('modal-nombre')?.focus();
-    return;
-  }
+  if (!cedula) { showToast('El número de documento es obligatorio','warning'); document.getElementById('modal-nueva-cedula')?.focus(); return; }
+  if (!nombre) { showToast('El nombre es obligatorio','warning'); document.getElementById('modal-nombre')?.focus(); return; }
 
-  // Verificar que no exista ya esa cédula (puede haber cambiado el valor)
+  // Verificar duplicado antes de insertar
   const { data: existe } = await sb.from('personas').select('id').eq('cedula', cedula).limit(1);
-  if (existe && existe.length > 0) {
-    showToast('Ya existe una persona con ese documento','warning');
-    return;
-  }
+  if (existe && existe.length > 0) { showToast('Ya existe una persona con ese documento','warning'); return; }
 
-  const { data, error } = await sb
-    .from('personas')
+  const { data, error } = await sb.from('personas')
     .insert({ cedula, nombre, telefono: telefono || null })
-    .select()
-    .single();
+    .select().single();
 
-  if (error) { showToast('Error al crear persona: ' + error.message, 'error'); return; }
+  if (error) { showToast('Error al crear persona: ' + error.message,'error'); return; }
 
-  // Mostrar confirmación y habilitar paso de bicicleta
+  // Reemplazar el formulario por confirmación y mostrar paso 2
   document.getElementById('modal-persona-id').value = data.id;
   document.getElementById('modal-persona-result').innerHTML = `
     <div class="bg-green-900/30 border border-green-700/50 rounded-xl p-3 text-sm">
-      <p class="font-semibold text-green-300">✓ Persona creada exitosamente</p>
-      <p class="text-white mt-1">${esc(data.nombre)}</p>
-      <p class="text-slate-400 text-xs">Cédula: ${esc(data.cedula)} · Tel: ${esc(data.telefono||'—')}</p>
+      <p class="font-semibold text-green-300 mb-1">✓ Persona creada</p>
+      <div class="grid grid-cols-2 gap-1 text-xs">
+        <div><span class="text-slate-500">Nombre</span><p class="text-white font-medium">${esc(data.nombre)}</p></div>
+        <div><span class="text-slate-500">Cédula</span><p class="text-white font-medium">${esc(data.cedula)}</p></div>
+      </div>
     </div>`;
   document.getElementById('modal-step-bike').classList.remove('hidden');
-  showToast('Persona registrada','success');
+  showToast('Persona registrada correctamente','success');
 };
 
-window.saveBike = async function(qrCode) {
+/**
+ * Guarda la bicicleta en Supabase usando state.activeQRCode.
+ * Esto evita el bug de pasar el QR como string en atributos HTML onclick.
+ */
+window.saveBike = async function() {
+  const qrCode    = state.activeQRCode;
   const personaId = document.getElementById('modal-persona-id')?.value;
   const marca     = document.getElementById('modal-marca')?.value.trim();
   const color     = document.getElementById('modal-color')?.value.trim();
-  if (!personaId) { showToast('Primero busca o crea la persona','warning'); return; }
-  if (!marca)     { showToast('Ingresa la marca de la bicicleta','warning'); return; }
-  const { data: bike, error: bikeErr } = await sb.from('bicicletas')
-    .insert({ codigo_qr: qrCode, persona_id: personaId, marca, color: color||null }).select().single();
-  if (bikeErr) { showToast('Error: '+bikeErr.message,'error'); return; }
-  const { error: regErr } = await sb.from('registros').insert({
-    bicicleta_id: bike.id, tipo: 'entrada',
-    fecha_hora: new Date().toISOString(), registrado_por: state.currentUser?.id||null
-  });
-  if (regErr) showToast('Bicicleta creada pero no se pudo registrar entrada','warning');
-  else { showToast('Bicicleta registrada y entrada guardada','success'); playBeep(true); }
-  closeModal();
-  showResultCard('entrada','ENTRADA registrada', { ...bike, personas:{ nombre:'(nuevo)' } });
+
+  // Validaciones con mensajes claros
+  if (!qrCode)    { showToast('Error: código QR perdido, cierra y escanea de nuevo','error'); return; }
+  if (!personaId) { showToast('Primero busca o crea el propietario','warning'); return; }
+  if (!marca)     { showToast('La marca es obligatoria','warning'); document.getElementById('modal-marca')?.focus(); return; }
+
+  const btn = document.querySelector('#modal-step-bike button');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Guardando...'; }
+
+  try {
+    // PASO 1: Insertar bicicleta — el codigo_qr se guarda aquí
+    const { data: bike, error: bikeErr } = await sb
+      .from('bicicletas')
+      .insert({ codigo_qr: qrCode, persona_id: personaId, marca, color: color || null })
+      .select('id, codigo_qr, marca, color')   // select simple sin join para evitar fallos
+      .single();
+
+    if (bikeErr) throw new Error('Error al guardar bicicleta: ' + bikeErr.message);
+
+    // PASO 2: Registrar la primera entrada
+    const { error: regErr } = await sb.from('registros').insert({
+      bicicleta_id:   bike.id,
+      tipo:           'entrada',
+      fecha_hora:     new Date().toISOString(),
+      registrado_por: state.currentUser?.id || null
+    });
+
+    if (regErr) throw new Error('Bicicleta guardada pero falló la entrada: ' + regErr.message);
+
+    // PASO 3: Obtener datos de la persona para mostrar en la tarjeta
+    const { data: personaData } = await sb
+      .from('personas')
+      .select('cedula, nombre')
+      .eq('id', personaId)
+      .single();
+
+    showToast('✓ Bicicleta y entrada registradas correctamente','success');
+    playBeep(true);
+    state.activeQRCode = null;
+    closeModal();
+    showResultCard('entrada', 'ENTRADA registrada', {
+      ...bike,
+      personas: personaData || { nombre: '—', cedula: '—' }
+    });
+
+  } catch (err) {
+    console.error('[saveBike]', err);
+    showToast(err.message, 'error', 6000);
+    if (btn) { btn.disabled = false; btn.innerHTML = '✓ Guardar Bicicleta y Registrar Entrada'; }
+  }
 };
 
 // ══════════════════════════════════════
