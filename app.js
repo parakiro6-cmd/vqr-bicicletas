@@ -143,34 +143,38 @@ window.closeModalOnOverlay = function(e) {
 function renderLoginView() {
   stopScanner();
   document.getElementById('app').innerHTML = `
-    <div class="min-h-screen flex flex-col items-center justify-center p-4 view-enter
-                bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div class="login-bg min-h-screen flex flex-col items-center justify-center p-4 view-enter">
       <div class="text-center mb-8">
         <img src="./logo.png" alt="VQR" onerror="this.style.display='none'"
              class="w-24 h-24 mx-auto mb-4 rounded-2xl shadow-lg object-contain ring-2 ring-blue-500/30" />
-        <h1 class="text-3xl font-bold text-white tracking-tight">VQR</h1>
-        <p class="text-slate-400 text-sm mt-1">Control de Bicicletas</p>
+        <h1 class="login-title text-3xl font-bold tracking-tight">VQR</h1>
+        <p class="login-label text-sm mt-1">Control de Bicicletas</p>
       </div>
-      <div class="w-full max-w-sm bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden">
-        <div class="flex border-b border-slate-700">
+
+      <div class="login-card w-full max-w-sm rounded-2xl shadow-2xl border overflow-hidden">
+        <!-- Pestañas Admin / Vigilante -->
+        <div class="login-tabs flex border-b">
           <button onclick="switchLoginTab('admin')" id="tab-admin"
                   class="flex-1 py-3.5 text-sm font-semibold transition-all bg-blue-600 text-white">
             🔐 Administrador
           </button>
           <button onclick="switchLoginTab('vigilante')" id="tab-vigilante"
-                  class="flex-1 py-3.5 text-sm font-semibold transition-all text-slate-400 hover:text-white hover:bg-slate-700">
+                  class="login-tab-inactive flex-1 py-3.5 text-sm font-semibold transition-all">
             👁 Vigilante
           </button>
         </div>
+
         <div class="p-6">
           <!-- Formulario Admin -->
           <div id="form-admin">
-            <p class="text-slate-400 text-xs mb-4">Ingresa tus credenciales de administrador.</p>
+            <p class="login-label text-xs mb-4">Ingresa tus credenciales de administrador.</p>
             <div class="space-y-3">
-              <input id="login-email" type="email" placeholder="Correo electrónico" autocomplete="email"
-                     class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
-              <input id="login-pass" type="password" placeholder="Contraseña" autocomplete="current-password"
-                     class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-600 text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all" />
+              <input id="login-email" type="email" placeholder="Correo electrónico"
+                     autocomplete="email"
+                     class="login-input w-full px-4 py-3 rounded-xl border text-sm focus:border-blue-500 transition-all" />
+              <input id="login-pass" type="password" placeholder="Contraseña"
+                     autocomplete="current-password"
+                     class="login-input w-full px-4 py-3 rounded-xl border text-sm focus:border-blue-500 transition-all" />
             </div>
             <button onclick="loginAdmin()"
                     class="mt-4 w-full py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold rounded-xl transition-all text-sm flex items-center justify-center gap-2">
@@ -178,13 +182,14 @@ function renderLoginView() {
               <span id="btn-login-spin" class="spinner hidden"></span>
             </button>
           </div>
+
           <!-- Formulario Vigilante PIN -->
           <div id="form-vigilante" class="hidden">
-            <p class="text-slate-400 text-xs mb-4">Ingresa el PIN para acceder al escáner.</p>
+            <p class="login-label text-xs mb-4">Ingresa el PIN para acceder al escáner.</p>
             <div class="flex gap-2 justify-center mb-4">
               ${[0,1,2,3].map(i=>`
                 <input id="pin-${i}" type="password" maxlength="1" inputmode="numeric" pattern="[0-9]"
-                       class="w-12 h-14 text-center text-xl font-bold rounded-xl bg-slate-900 border border-slate-600 text-white focus:border-blue-500 transition-all"
+                       class="login-input w-12 h-14 text-center text-xl font-bold rounded-xl border focus:border-blue-500 transition-all"
                        oninput="movePinFocus(this,${i})" onkeydown="handlePinKey(event,${i})" />`).join('')}
             </div>
             <button onclick="loginVigilante()"
@@ -195,7 +200,8 @@ function renderLoginView() {
           </div>
         </div>
       </div>
-      <p class="mt-6 text-slate-600 text-xs">VQR v1.0 · Sistema de Control de Uso de Bicicletas HSVA</p>
+
+      <p class="login-footer mt-6 text-xs">VQR v1.0 · Sistema de Control de Uso de Bicicletas HSVA</p>
     </div>`;
   document.getElementById('login-pass')?.addEventListener('keydown',(e)=>{ if(e.key==='Enter') loginAdmin(); });
 }
@@ -204,8 +210,16 @@ window.switchLoginTab = function(tab) {
   const isAdmin = tab==='admin';
   document.getElementById('form-admin').classList.toggle('hidden',!isAdmin);
   document.getElementById('form-vigilante').classList.toggle('hidden',isAdmin);
-  document.getElementById('tab-admin').className     = `flex-1 py-3.5 text-sm font-semibold transition-all ${isAdmin  ?'bg-blue-600 text-white':'text-slate-400 hover:text-white hover:bg-slate-700'}`;
-  document.getElementById('tab-vigilante').className = `flex-1 py-3.5 text-sm font-semibold transition-all ${!isAdmin ?'bg-green-600 text-white':'text-slate-400 hover:text-white hover:bg-slate-700'}`;
+  // Tab activo: siempre fondo de color sólido con texto blanco
+  // Tab inactivo: usa clase semántica login-tab-inactive que responde al tema
+  document.getElementById('tab-admin').className =
+    `flex-1 py-3.5 text-sm font-semibold transition-all ${isAdmin
+      ? 'bg-blue-600 text-white'
+      : 'login-tab-inactive'}`;
+  document.getElementById('tab-vigilante').className =
+    `flex-1 py-3.5 text-sm font-semibold transition-all ${!isAdmin
+      ? 'bg-green-600 text-white'
+      : 'login-tab-inactive'}`;
 };
 
 window.movePinFocus = function(input,index) {
