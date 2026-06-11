@@ -37,7 +37,7 @@ const state = {
   histPage: 1, histTotal: 0,
   histFilters: { from: '', to: '', search: '', order: 'desc' },
   // Paginación estadísticas
-  statsPage: 1, statsTotal: 0, statsSearch: '',
+  statsPage: 1, statsTotal: 0, statsSearch: '', statsFrom: '', statsTo: '',
 };
 
 // ══════════════════════════════════════
@@ -886,8 +886,9 @@ async function loadHistorial() {
           <td class="px-4 py-3 text-blue-300 font-mono text-xs">${esc(r.bicicletas?.codigo_qr||'—')}</td>
           <td class="px-4 py-3 text-slate-400 text-xs">${esc(r.bicicletas?.telefono||'—')}</td>
           <td class="px-4 py-3">
-            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${r.tipo==='entrada'?'badge-entrada':'badge-salida'}">
-              ${r.tipo==='entrada'?'↓ Entrada':'↑ Salida'}
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${r.tipo==='entrada'?'badge-entrada':'badge-salida'}">
+              <span>${r.tipo==='entrada'?'↓':'↑'}</span>
+              <span>${r.tipo==='entrada'?'Entrada':'Salida'}</span>
             </span>
           </td>
         </tr>`).join('');
@@ -913,15 +914,38 @@ async function loadHistorial() {
 function renderEstadisticasContent() {
   return `
     <div class="bg-slate-800 rounded-2xl border border-slate-700 p-4 mb-4">
-      <div class="flex gap-2">
-        <input id="stats-search" type="text"
-               placeholder="Buscar por cédula, nombre o código QR..."
-               class="flex-1 px-3 py-2.5 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all"
-               onkeydown="if(event.key==='Enter') applyStatsFilter()" />
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <!-- Búsqueda -->
+        <div class="sm:col-span-2">
+          <label class="text-xs text-slate-400 mb-1 block">Buscar</label>
+          <input id="stats-search" type="text"
+                 placeholder="Cédula, nombre o código QR..."
+                 class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-xl
+                        text-white placeholder-slate-500 text-sm focus:border-blue-500 transition-all"
+                 onkeydown="if(event.key==='Enter') applyStatsFilter()" />
+        </div>
+        <!-- Desde -->
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Desde</label>
+          <input id="stats-from" type="date"
+                 class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-xl
+                        text-white text-sm focus:border-blue-500 transition-all" />
+        </div>
+        <!-- Hasta -->
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Hasta</label>
+          <input id="stats-to" type="date"
+                 class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-xl
+                        text-white text-sm focus:border-blue-500 transition-all" />
+        </div>
+      </div>
+      <div class="flex gap-2 mt-3">
         <button onclick="applyStatsFilter()"
-                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-semibold rounded-xl text-sm transition-all">Buscar</button>
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95
+                       text-white font-semibold rounded-xl text-sm transition-all">Buscar</button>
         <button onclick="clearStatsFilter()"
-                class="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-300 rounded-xl text-sm transition-all">✕</button>
+                class="px-4 py-2 bg-slate-700 hover:bg-slate-600 active:scale-95
+                       text-slate-300 font-semibold rounded-xl text-sm transition-all">Limpiar</button>
       </div>
     </div>
     <div class="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
@@ -956,8 +980,17 @@ function renderEstadisticasContent() {
 }
 
 const STATS_PER_PAGE=20;
-window.applyStatsFilter = function(){ state.statsSearch=document.getElementById('stats-search')?.value.trim()||''; state.statsPage=1; loadEstadisticas(); };
-window.clearStatsFilter = function(){ const el=document.getElementById('stats-search'); if(el) el.value=''; state.statsSearch=''; state.statsPage=1; loadEstadisticas(); };
+window.applyStatsFilter = function(){
+  state.statsSearch = document.getElementById('stats-search')?.value.trim()||'';
+  state.statsFrom   = document.getElementById('stats-from')?.value||'';
+  state.statsTo     = document.getElementById('stats-to')?.value||'';
+  state.statsPage=1; loadEstadisticas();
+};
+window.clearStatsFilter = function(){
+  ['stats-search','stats-from','stats-to'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  state.statsSearch=''; state.statsFrom=''; state.statsTo='';
+  state.statsPage=1; loadEstadisticas();
+};
 window.statsPrevPage = function(){ if(state.statsPage>1){state.statsPage--;loadEstadisticas();} };
 window.statsNextPage = function(){ if(state.statsPage<Math.ceil(state.statsTotal/STATS_PER_PAGE)){state.statsPage++;loadEstadisticas();} };
 
@@ -988,12 +1021,22 @@ async function loadEstadisticas() {
     }
 
     // Para cada bicicleta: contar entradas, salidas y último movimiento
+    // Si hay filtro de fechas, los counts se aplican solo en ese rango
+    const {statsFrom, statsTo} = state;
     const rows=await Promise.all(bikes.map(async(bike)=>{
-      const [ent,sal,ult]=await Promise.all([
-        sb.from('registros').select('id',{count:'exact',head:true}).eq('bicicleta_id',bike.id).eq('tipo','entrada'),
-        sb.from('registros').select('id',{count:'exact',head:true}).eq('bicicleta_id',bike.id).eq('tipo','salida'),
-        sb.from('registros').select('tipo,fecha_hora').eq('bicicleta_id',bike.id).order('fecha_hora',{ascending:false}).limit(1)
-      ]);
+      // Construir queries base de conteo
+      let qEnt = sb.from('registros').select('id',{count:'exact',head:true})
+                   .eq('bicicleta_id',bike.id).eq('tipo','entrada');
+      let qSal = sb.from('registros').select('id',{count:'exact',head:true})
+                   .eq('bicicleta_id',bike.id).eq('tipo','salida');
+      let qUlt = sb.from('registros').select('tipo,fecha_hora')
+                   .eq('bicicleta_id',bike.id).order('fecha_hora',{ascending:false}).limit(1);
+
+      // Aplicar filtro de fechas si está activo
+      if(statsFrom){ qEnt=qEnt.gte('fecha_hora',statsFrom+'T00:00:00'); qSal=qSal.gte('fecha_hora',statsFrom+'T00:00:00'); qUlt=qUlt.gte('fecha_hora',statsFrom+'T00:00:00'); }
+      if(statsTo)  { qEnt=qEnt.lte('fecha_hora',statsTo+'T23:59:59');   qSal=qSal.lte('fecha_hora',statsTo+'T23:59:59');   qUlt=qUlt.lte('fecha_hora',statsTo+'T23:59:59');   }
+
+      const [ent,sal,ult]=await Promise.all([qEnt,qSal,qUlt]);
       return {bike, entradas:ent.count||0, salidas:sal.count||0, ultimo:ult.data?.[0]||null};
     }));
 
@@ -1003,14 +1046,20 @@ async function loadEstadisticas() {
         <td class="px-4 py-3 text-white text-xs font-medium">${esc(bike.nombre)}</td>
         <td class="px-4 py-3 text-blue-300 font-mono text-xs break-all">${esc(bike.codigo_qr)}</td>
         <td class="px-4 py-3 text-center">
-          <span class="px-2.5 py-1 rounded-full text-xs font-bold badge-entrada">↓ ${entradas}</span>
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap badge-entrada">
+            <span>↓</span><span>${entradas}</span>
+          </span>
         </td>
         <td class="px-4 py-3 text-center">
-          <span class="px-2.5 py-1 rounded-full text-xs font-bold badge-salida">↑ ${salidas}</span>
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap badge-salida">
+            <span>↑</span><span>${salidas}</span>
+          </span>
         </td>
         <td class="px-4 py-3 text-xs whitespace-nowrap">
           ${ultimo?`
-            <span class="px-2 py-0.5 rounded-full text-xs ${ultimo.tipo==='entrada'?'badge-entrada':'badge-salida'}">${ultimo.tipo}</span>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs whitespace-nowrap ${ultimo.tipo==='entrada'?'badge-entrada':'badge-salida'}">
+              <span>${ultimo.tipo==='entrada'?'↓':'↑'}</span><span>${ultimo.tipo}</span>
+            </span>
             <span class="text-slate-400 ml-1">${formatDate(ultimo.fecha_hora)}</span>
           `:'<span class="text-slate-600">Sin movimientos</span>'}
         </td>
@@ -1055,7 +1104,35 @@ function updateOfflineBanner() {
 }
 
 // ══════════════════════════════════════
-// 14. LOGOUT
+// 14. TEMA CLARO / OSCURO
+// ══════════════════════════════════════
+
+/** Aplica el tema guardado al cargar la página */
+function applyTheme(theme) {
+  const html = document.documentElement;
+  if (theme === 'light') {
+    html.classList.remove('dark');
+    html.classList.add('light');
+    document.getElementById('icon-sun')?.classList.remove('hidden');
+    document.getElementById('icon-moon')?.classList.add('hidden');
+  } else {
+    html.classList.remove('light');
+    html.classList.add('dark');
+    document.getElementById('icon-sun')?.classList.add('hidden');
+    document.getElementById('icon-moon')?.classList.remove('hidden');
+  }
+}
+
+/** Alterna entre tema claro y oscuro */
+window.toggleTheme = function() {
+  const isDark = document.documentElement.classList.contains('dark');
+  const next   = isDark ? 'light' : 'dark';
+  localStorage.setItem('vqr_theme', next);
+  applyTheme(next);
+};
+
+// ══════════════════════════════════════
+// 15. LOGOUT
 // ══════════════════════════════════════
 window.logout = async function() {
   stopScanner();
@@ -1069,6 +1146,9 @@ window.logout = async function() {
 // 15. INIT
 // ══════════════════════════════════════
 async function init() {
+  // Aplicar tema guardado antes de renderizar cualquier vista
+  applyTheme(localStorage.getItem('vqr_theme') || 'dark');
+
   window.addEventListener('online', ()=>{ state.isOnline=true; updateOfflineBanner(); updateSyncBadge(); syncOfflineQueue(); showToast('Conexión restaurada','success'); });
   window.addEventListener('offline',()=>{ state.isOnline=false; updateOfflineBanner(); showToast('Sin conexión – modo offline','warning'); });
 

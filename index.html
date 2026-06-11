@@ -82,10 +82,24 @@
     .badge-entrada { background-color: #166534; color: #86efac; }
     .badge-salida  { background-color: #7f1d1d; color: #fca5a5; }
 
-    /* ── Modo claro automático ── */
-    @media (prefers-color-scheme: light) {
-      html:not(.dark) body { background-color: #f1f5f9; color: #0f172a; }
-    }
+    /* ── Modo claro: variables de color ── */
+    html.light body                 { background-color: #f1f5f9; color: #0f172a; }
+    html.light .bg-slate-900        { background-color: #f8fafc !important; }
+    html.light .bg-slate-800        { background-color: #ffffff !important; }
+    html.light .bg-slate-700        { background-color: #e2e8f0 !important; }
+    html.light .border-slate-700    { border-color: #cbd5e1 !important; }
+    html.light .border-slate-600    { border-color: #94a3b8 !important; }
+    html.light .text-white          { color: #0f172a !important; }
+    html.light .text-slate-100      { color: #1e293b !important; }
+    html.light .text-slate-300      { color: #334155 !important; }
+    html.light .text-slate-400      { color: #475569 !important; }
+    html.light .text-slate-500      { color: #64748b !important; }
+    html.light .text-slate-600      { color: #94a3b8 !important; }
+    html.light input, html.light select { background-color: #f1f5f9 !important; color: #0f172a !important; border-color: #94a3b8 !important; }
+    html.light .bg-slate-900\/40    { background-color: rgba(241,245,249,.8) !important; }
+    html.light .bg-slate-700\/30    { background-color: rgba(226,232,240,.5) !important; }
+    html.light .bg-slate-700\/20    { background-color: rgba(226,232,240,.3) !important; }
+    html.light #theme-toggle        { background-color: #e2e8f0; border-color: #94a3b8; }
 
     /* ── Spinner ── */
     .spinner {
@@ -107,6 +121,27 @@
        CONTENEDOR DE TOASTS
   ══════════════════════════════════════ -->
   <div id="toast-container"></div>
+
+  <!-- ══════════════════════════════════════
+       BOTÓN CAMBIO DE TEMA (fijo, esquina)
+  ══════════════════════════════════════ -->
+  <button id="theme-toggle" onclick="toggleTheme()"
+          title="Cambiar tema"
+          class="fixed bottom-5 right-5 z-50 w-10 h-10 rounded-full shadow-lg
+                 bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600
+                 border border-slate-600 flex items-center justify-center
+                 transition-all active:scale-90">
+    <!-- Ícono sol (modo claro activo) -->
+    <svg id="icon-sun" class="hidden w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/>
+    </svg>
+    <!-- Ícono luna (modo oscuro activo) -->
+    <svg id="icon-moon" class="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+    </svg>
+  </button>
 
   <!-- ══════════════════════════════════════
        INDICADOR DE SINCRONIZACIÓN OFFLINE
